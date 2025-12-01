@@ -1,6 +1,6 @@
 {
   "name": "mcp-compiler",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Transform plain TypeScript functions into an MCP server.",
   "main": "dist/index.js",
   "scripts": {
@@ -32,6 +32,6 @@
   "homepage": "https://github.com/kolodny/mcp-compiler#readme",
   "dependencies": {
     "ajv": "^8.17.1",
-    "ts2schema": "^1.1.0"
+    "ts2schema": "^1.2.0"
   }
 }

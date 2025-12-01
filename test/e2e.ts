@@ -24,6 +24,8 @@ export const returnsRecord = () => {
   return record;
 };
 
+export const noParams = () => 123;
+
 test(basename(__filename), async () => {
   const tools = await import(__filename);
 
@@ -38,7 +40,8 @@ test(basename(__filename), async () => {
     send: async (message) => clientTransport.onmessage?.(message),
   };
 
-  const compiled = compile({ tools, schemas: generateSchemas(__filename) });
+  const schemas = generateSchemas(__filename);
+  const compiled = compile({ tools, schemas });
   const server = new Server(
     { name: 'Server', version: '1.0.0' },
     { capabilities: { tools: {} } }
@@ -67,6 +70,7 @@ test(basename(__filename), async () => {
       'concat',
       'makeUser',
       'returnsRecord',
+      'noParams',
     ].sort()
   );
 
@@ -112,4 +116,12 @@ test(basename(__filename), async () => {
     recordTool?.outputSchema?.definitions!,
     'record tool should have definitions'
   );
+
+  const noParams = listTools.tools.find((t) => t.name === 'noParams');
+  assert.deepEqual(noParams?.inputSchema, {
+    type: 'object',
+    properties: {},
+    required: [],
+    additionalProperties: false,
+  });
 });
