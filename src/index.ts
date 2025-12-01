@@ -29,6 +29,7 @@ export const compile = ({
       const result = definition.properties?.['result']!;
       const isObject = typeof result === 'object' && result.type === 'object';
       let outputSchema: any = result;
+      const inputSchema = definition.properties?.['params'] as any;
       if (!isObject) {
         wrappedResults.add(name);
         outputSchema = {
@@ -38,12 +39,12 @@ export const compile = ({
           additionalProperties: false,
         };
       }
-      return {
-        name,
-        inputSchema: definition.properties?.['params'] as never,
-        outputSchema,
-        description: definition.description,
-      };
+      if (definition.definitions) {
+        if (inputSchema) inputSchema.definitions = definition.definitions;
+        if (outputSchema) outputSchema.definitions = definition.definitions;
+      }
+      const { description, definitions } = definition;
+      return { name, inputSchema, outputSchema, definitions, description };
     }
   );
 

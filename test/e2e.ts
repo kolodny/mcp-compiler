@@ -5,7 +5,6 @@ import { compile, generateSchemas } from '../src/index';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
-import * as tools from './e2e';
 
 import {
   CallToolRequestSchema,
@@ -19,6 +18,11 @@ export const sum = (s: number, ...r: number[]) => r.reduce((a, n) => a + n, s);
 export const restSum = (...ns: number[]) => ns.reduce((a, n) => a + n);
 export const concat = (a: string, b: string) => a + b;
 export const makeUser = async (id: string, age: number) => ({ id, age });
+
+export const returnsRecord = () => {
+  const record: Record<string, number> = { a: 1, b: 2 };
+  return record;
+};
 
 test(basename(__filename), async () => {
   const tools = await import(__filename);
@@ -54,7 +58,16 @@ test(basename(__filename), async () => {
   const listTools = await client.listTools();
   assert.deepStrictEqual(
     listTools.tools.map((t) => t.name).sort(),
-    ['addV1', 'addV2', 'sayHi', 'sum', 'restSum', 'concat', 'makeUser'].sort()
+    [
+      'addV1',
+      'addV2',
+      'sayHi',
+      'sum',
+      'restSum',
+      'concat',
+      'makeUser',
+      'returnsRecord',
+    ].sort()
   );
 
   const checkStructured = async (name: string, params: any, expected: any) => {
@@ -93,4 +106,10 @@ test(basename(__filename), async () => {
   assert.ok(!makeUser.isError, 'Expected no error for valid call');
   const content = '{"id":"AB","age":9}';
   assert.partialDeepStrictEqual(makeUser.content, [{ text: content }]);
+
+  const recordTool = listTools.tools.find((t) => t.name === 'returnsRecord');
+  assert.ok(
+    recordTool?.outputSchema?.definitions!,
+    'record tool should have definitions'
+  );
 });
