@@ -23,10 +23,6 @@ export const compile = ({
   /** AJV instance for JSON schema validation, used to change validation behavior */
   ajv?: Ajv;
 }) => {
-  const warn = console.warn;
-  console.warn = () => {};
-  console.warn = warn;
-
   const wrappedResults = new Set<string>();
   const toolsList: ListToolsResult['tools'] = Object.entries(schemas.fns).map(
     ([name, definition]) => {

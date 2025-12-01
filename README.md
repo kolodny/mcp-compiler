@@ -29,10 +29,14 @@ export const makeUser = (user: {
 import { compile, generateSchemas } from 'mcp-compiler';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import tools from './tools.ts';
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+} from '@modelcontextprotocol/sdk/types.js';
+import * as tools from './tools';
 
 const pathToTools = `${__dirname}/tools.ts`;
-const schemas = generateSchemas(__filename); // These should be generated during build time for release.
+const schemas = generateSchemas(pathToTools); // These should be generated during build time for release.
 const compiled = compile({ tools, schemas });
 const server = new Server(
   { name: 'My-Server', version: '1.0.0' },
@@ -45,11 +49,11 @@ server.setRequestHandler(CallToolRequestSchema, compiled.CallToolHandler);
 async function runServer() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error(`MCP Server '${name}' running on stdio`);
+  console.error(`MCP Server running on stdio`);
 }
 
 runServer().catch((error) => {
-  console.error(`Fatal error running server '${name}':`, error);
+  console.error(`Fatal error running server:`, error);
   process.exit(1);
 });
 ```
