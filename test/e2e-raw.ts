@@ -29,33 +29,27 @@ export const noParams = () => 123;
 test(basename(__filename), async () => {
   const tools = await import(__filename);
 
-  const common = { start: async () => {}, close: async () => {} };
-  const clientTransport: Transport = {
-    ...common,
-    send: async (message) => serverTransport.onmessage?.(message),
-  };
-
-  const serverTransport: Transport = {
-    ...common,
-    send: async (message) => clientTransport.onmessage?.(message),
-  };
+  const empty = async () => {};
+  const common: Transport = { start: empty, close: empty, send: empty };
+  const clientTransport = { ...common };
+  const serverTransport = { ...common };
+  clientTransport.send = async (m) => serverTransport.onmessage?.(m);
+  serverTransport.send = async (m) => clientTransport.onmessage?.(m);
 
   const schemas = generateSchemas(__filename);
   const compiled = compile({ tools, schemas });
+
   const server = new Server(
     { name: 'Server', version: '1.0.0' },
     { capabilities: { tools: {} } }
   );
+  const client = new Client({ name: 'Client', version: '1.0.0' });
+
   server.setRequestHandler(ListToolsRequestSchema, compiled.ListToolsHandler);
   server.setRequestHandler(CallToolRequestSchema, compiled.CallToolHandler);
 
   await server.connect(serverTransport);
   console.error(`MCP Server running on stdio`);
-
-  const client = new Client({
-    name: 'Client',
-    version: '1.0.0',
-  });
 
   await client.connect(clientTransport);
   const listTools = await client.listTools();

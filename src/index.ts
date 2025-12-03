@@ -1,11 +1,12 @@
 import { generateSchemas } from 'ts2schema';
 import Ajv from 'ajv';
+import type * as Z4 from 'zod/v4';
 import type {
-  ListToolsRequest,
   ListToolsResult,
   CallToolRequest,
   CallToolResult,
 } from '@modelcontextprotocol/sdk/types.js';
+
 export { generateSchemas };
 
 export const compile = ({
@@ -13,6 +14,7 @@ export const compile = ({
   schemas,
   validateCalls = true,
   ajv = new Ajv(),
+  z: _z,
 }: {
   /** Main import: `import * as tools from './tools'` */
   tools: Record<string, any>;
@@ -22,6 +24,7 @@ export const compile = ({
   validateCalls?: boolean;
   /** AJV instance for JSON schema validation, used to change validation behavior */
   ajv?: Ajv;
+  z?: typeof Z4;
 }) => {
   const wrappedResults = new Set<string>();
   const toolsList: ListToolsResult['tools'] = Object.entries(schemas.fns).map(
@@ -48,6 +51,33 @@ export const compile = ({
     }
   );
 
+  const makeZodSchemas = (name: string, z: typeof Z4 | undefined = _z) => {
+    if (!z) throw new Error('Zod instance not provided');
+    const tool = toolsList.find((t) => t.name === name);
+    if (!tool) throw new Error(`Tool not found: ${name}`);
+
+    const inputSchema = z.custom().superRefine((data, ctx) => {
+      const valid = validate(name, data);
+      if (!valid.valid) {
+        for (const error of valid.errors || []) {
+          const path = error.instancePath.split('/').slice(1).join('.');
+
+          const message = error.message || 'Invalid value';
+          if (path) ctx.addIssue({ code: 'custom', message, path: [path] });
+          else ctx.addIssue({ code: 'custom', message });
+        }
+      }
+    });
+
+    const outputSchema = tool.outputSchema
+      ? z.object({}).register(z.globalRegistry, tool.outputSchema)
+      : undefined;
+
+    inputSchema.register(z.globalRegistry, tool.inputSchema);
+
+    return { inputSchema, outputSchema };
+  };
+
   const validate = (name: string, params: any) => {
     const tool = toolsList.find((t) => t.name === name);
     const inputSchema = tool!.inputSchema;
@@ -57,7 +87,8 @@ export const compile = ({
     return { valid, ...validate };
   };
 
-  const call = async (name: string, params: any) => {
+  /** Raw function apply, handles object and array param mapping, does NOT return an LLM shaped response. */
+  const apply = async (name: string, params: any) => {
     const tool = toolsList.find((t) => t.name === name);
     const inputSchema = tool!.inputSchema;
 
@@ -75,28 +106,15 @@ export const compile = ({
     return wrappedResults.has(name) ? { result } : result;
   };
 
-  const ListToolsHandler = async (
-    request: ListToolsRequest
-  ): Promise<ListToolsResult> => {
-    return { tools: toolsList };
-  };
+  const ListToolsHandler = (): ListToolsResult => ({ tools: toolsList });
 
-  const CallToolHandler = async (
-    request: CallToolRequest
+  /** Calls the function, and returns the LLM shaped response. */
+  const callTool = async (
+    name: string,
+    args: unknown
   ): Promise<CallToolResult> => {
-    const { name, arguments: args } = request.params;
-
-    if (validateCalls) {
-      const { valid, errors } = validate(name, args);
-
-      if (!valid) {
-        const text = JSON.stringify(errors);
-        return { isError: true, content: [{ type: 'text', text }] };
-      }
-    }
-
     try {
-      const result = await call(name, args);
+      const result = await apply(name, args);
       const text = JSON.stringify(result);
       return { content: [{ type: 'text', text }], structuredContent: result };
     } catch (error: any) {
@@ -109,11 +127,27 @@ export const compile = ({
     }
   };
 
+  const CallToolHandler = async ({
+    params: { name, arguments: args },
+  }: CallToolRequest): Promise<CallToolResult> => {
+    if (validateCalls) {
+      const { valid, errors } = validate(name, args);
+
+      if (!valid) {
+        const text = JSON.stringify(errors);
+        return { isError: true, content: [{ type: 'text', text }] };
+      }
+    }
+    return callTool(name, args);
+  };
+
   return {
     tools: toolsList,
     validate,
-    call,
+    apply,
+    callTool,
     CallToolHandler,
     ListToolsHandler,
+    makeZodSchemas,
   };
 };

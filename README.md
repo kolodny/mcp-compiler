@@ -26,23 +26,61 @@ export const makeUser = (user: {
 ```
 
 ```typescript
-import { compile, generateSchemas } from 'mcp-compiler';
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
+
+import { compile, generateSchemas } from 'mcp-compiler';
 import * as tools from './tools';
 
 const pathToTools = `${__dirname}/tools.ts`;
-const schemas = generateSchemas(pathToTools); // These should be generated during build time for release.
+const schemas = generateSchemas(pathToTools); // OK for dev, pre-build and load from file for release.
 const compiled = compile({ tools, schemas });
-const server = new Server(
+
+const server = new McpServer(
   { name: 'My-Server', version: '1.0.0' },
   { capabilities: { tools: {} } }
 );
 
+for (const { name } of compiled.tools) {
+  const zodSchemas = compiled.makeZodSchemas(name);
+  const fn = compiled.callTool.bind(null, name);
+  server.registerTool(name, zodSchemas, fn);
+}
+
+async function runServer() {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error(`MCP Server running on stdio`);
+}
+
+runServer().catch((error) => {
+  console.error(`Fatal error running server:`, error);
+  process.exit(1);
+});
+```
+
+<details>
+  <summary>Use with low level <code>Server</code> class for advanced use cases</summary>
+
+```typescript
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+} from '@modelcontextprotocol/sdk/types.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+
+import { compile, generateSchemas } from 'mcp-compiler';
+import * as tools from './tools';
+
+const pathToTools = `${__dirname}/tools.ts`;
+const schemas = generateSchemas(pathToTools); // OK for dev, pre-build and load from file for release.
+const compiled = compile({ tools, schemas });
+
+const server = new Server(
+  { name: 'My-Server', version: '1.0.0' },
+  { capabilities: { tools: {} } }
+);
 server.setRequestHandler(ListToolsRequestSchema, compiled.ListToolsHandler);
 server.setRequestHandler(CallToolRequestSchema, compiled.CallToolHandler);
 
@@ -57,3 +95,5 @@ runServer().catch((error) => {
   process.exit(1);
 });
 ```
+
+</details>
