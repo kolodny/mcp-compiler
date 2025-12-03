@@ -42,10 +42,10 @@ const server = new McpServer(
   { capabilities: { tools: {} } }
 );
 
-for (const { name } of compiled.tools) {
+for (const { name, description } of compiled.tools) {
   const zodSchemas = compiled.makeZodSchemas(name);
   const fn = compiled.callTool.bind(null, name);
-  server.registerTool(name, zodSchemas, fn);
+  server.registerTool(name, { ...zodSchemas, description }, fn);
 }
 
 async function runServer() {

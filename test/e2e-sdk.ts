@@ -9,6 +9,7 @@ import * as Z4 from 'zod/v4';
 
 export const addV1 = (a: number, b: number) => a + b;
 export const addV2 = ({ a, b }: { a: number; b: number }) => a + b;
+/** Helper function to make a user object */
 export const makeUser = async (id: string, age: number) => ({ id, age });
 
 test(basename(__filename), async () => {
@@ -30,10 +31,10 @@ test(basename(__filename), async () => {
   const schemas = generateSchemas(__filename);
   const compiled = compile({ tools, schemas, z: Z4 });
 
-  for (const { name } of compiled.tools) {
+  for (const { name, description } of compiled.tools) {
     const zodSchemas = compiled.makeZodSchemas(name);
     const fn = compiled.callTool.bind(null, name);
-    server.registerTool(name, zodSchemas, fn);
+    server.registerTool(name, { ...zodSchemas, description }, fn);
   }
 
   await server.connect(serverTransport);
@@ -44,6 +45,10 @@ test(basename(__filename), async () => {
   assert.deepStrictEqual(
     listTools.tools.map((t) => t.name).sort(),
     ['addV1', 'addV2', 'makeUser'].sort()
+  );
+  assert.deepStrictEqual(
+    listTools.tools.find((t) => t.name === 'makeUser')?.description,
+    'Helper function to make a user object'
   );
   const checkStructured = async (name: string, params: any, expected: any) => {
     const result = await client.callTool({ name, arguments: params });
