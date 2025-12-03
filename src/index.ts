@@ -56,7 +56,17 @@ export const compile = ({
     const tool = toolsList.find((t) => t.name === name);
     if (!tool) throw new Error(`Tool not found: ${name}`);
 
-    const inputSchema = z.custom().superRefine((data, ctx) => {
+    const makeZod = (props: Record<string, any>) => {
+      const keys = Object.keys(props ?? {});
+      return Object.fromEntries(keys.map((k) => [k, z.any().optional()]));
+    };
+
+    const input = makeZod(tool.inputSchema?.properties ?? {});
+    const output = tool.outputSchema
+      ? makeZod(tool.outputSchema?.properties ?? {})
+      : undefined;
+
+    const inputSchema = z.object(input).superRefine((data, ctx) => {
       const valid = validate(name, data);
       if (!valid.valid) {
         for (const error of valid.errors || []) {
@@ -69,8 +79,8 @@ export const compile = ({
       }
     });
 
-    const outputSchema = tool.outputSchema
-      ? z.object({}).register(z.globalRegistry, tool.outputSchema)
+    const outputSchema = output
+      ? z.object(output).register(z.globalRegistry, tool.outputSchema!)
       : undefined;
 
     inputSchema.register(z.globalRegistry, tool.inputSchema);
