@@ -28,13 +28,14 @@ export const makeUser = (user: {
 ```typescript
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import * as z from 'zod/v4';
 
 import { compile, generateSchemas } from 'mcp-compiler';
 import * as tools from './tools';
 
 const pathToTools = `${__dirname}/tools.ts`;
 const schemas = generateSchemas(pathToTools); // OK for dev, pre-build and load from file for release.
-const compiled = compile({ tools, schemas });
+const compiled = compile({ tools, schemas, z });
 
 const server = new McpServer(
   { name: 'My-Server', version: '1.0.0' },
