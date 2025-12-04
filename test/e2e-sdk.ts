@@ -9,6 +9,7 @@ import * as Z4 from 'zod/v4';
 
 export const addV1 = (a: number, b: number) => a + b;
 export const addV2 = ({ a, b }: { a: number; b: number }) => a + b;
+export const upper = (s: string) => s.toUpperCase();
 /** Helper function to make a user object */
 export const makeUser = async (id: string, age: number) => ({ id, age });
 
@@ -44,7 +45,7 @@ test(basename(__filename), async () => {
   const listTools = await client.listTools();
   assert.deepStrictEqual(
     listTools.tools.map((t) => t.name).sort(),
-    ['addV1', 'addV2', 'makeUser'].sort()
+    ['addV1', 'addV2', 'makeUser', 'upper'].sort()
   );
   assert.deepStrictEqual(
     listTools.tools.find((t) => t.name === 'makeUser')?.description,
@@ -54,9 +55,18 @@ test(basename(__filename), async () => {
     const result = await client.callTool({ name, arguments: params });
     assert.deepStrictEqual(result.structuredContent, expected);
   };
+  const checkText = async (name: string, params: any, expected: any) => {
+    const result = await client.callTool({ name, arguments: params });
+    assert.deepStrictEqual(result.content, expected);
+  };
 
   await checkStructured('addV1', { a: 4, b: 5 }, { result: 9 });
   await checkStructured('addV2', { a: 4, b: 5 }, { result: 9 });
+  await checkText('addV1', { a: 4, b: 5 }, [
+    { type: 'text', text: '{\n  "result": 9\n}' },
+  ]);
+  await checkText('upper', { s: 'hello' }, [{ type: 'text', text: 'HELLO' }]);
+
   const addV1Error = await client.callTool({
     name: 'addV1',
     arguments: { a: 4, b: '5' },

@@ -95,14 +95,16 @@ test(basename(__filename), async () => {
     arguments: { a: 4, b: 5 },
   });
   assert.ok(!addV1Text.isError, 'Expected no error for valid call');
-  assert.partialDeepStrictEqual(addV1Text.content, [{ text: '{"result":9}' }]);
+  assert.partialDeepStrictEqual(addV1Text.content, [
+    { text: '{\n  "result": 9\n}' },
+  ]);
 
   const makeUser = await client.callTool({
     name: 'makeUser',
     arguments: { id: 'AB', age: 9 },
   });
   assert.ok(!makeUser.isError, 'Expected no error for valid call');
-  const content = '{"id":"AB","age":9}';
+  const content = JSON.stringify({ id: 'AB', age: 9 }, null, 2);
   assert.partialDeepStrictEqual(makeUser.content, [{ text: content }]);
 
   const recordTool = listTools.tools.find((t) => t.name === 'returnsRecord');

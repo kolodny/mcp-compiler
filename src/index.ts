@@ -125,7 +125,8 @@ export const compile = ({
   ): Promise<CallToolResult> => {
     try {
       const result = await apply(name, args);
-      const text = JSON.stringify(result);
+      const raw = wrappedResults.has(name) && typeof result.result === 'string';
+      const text = raw ? result.result : JSON.stringify(result, null, 2);
       return { content: [{ type: 'text', text }], structuredContent: result };
     } catch (error: any) {
       const text = JSON.stringify({
