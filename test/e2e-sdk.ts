@@ -10,6 +10,8 @@ import * as Z4 from 'zod/v4';
 export const addV1 = (a: number, b: number) => a + b;
 export const addV2 = ({ a, b }: { a: number; b: number }) => a + b;
 export const upper = (s: string) => s.toUpperCase();
+export const join = (strs: string[], sep: string) => strs.join(sep);
+
 /** Helper function to make a user object */
 export const makeUser = async (id: string, age: number) => ({ id, age });
 
@@ -45,7 +47,7 @@ test(basename(__filename), async () => {
   const listTools = await client.listTools();
   assert.deepStrictEqual(
     listTools.tools.map((t) => t.name).sort(),
-    ['addV1', 'addV2', 'makeUser', 'upper'].sort()
+    ['addV1', 'addV2', 'makeUser', 'upper', 'join'].sort()
   );
   assert.deepStrictEqual(
     listTools.tools.find((t) => t.name === 'makeUser')?.description,
@@ -62,8 +64,16 @@ test(basename(__filename), async () => {
 
   await checkStructured('addV1', { a: 4, b: 5 }, { result: 9 });
   await checkStructured('addV2', { a: 4, b: 5 }, { result: 9 });
+  await checkStructured(
+    'join',
+    { strs: ['a', 'b', 'c'], sep: '-' },
+    { result: 'a-b-c' }
+  );
   await checkText('addV1', { a: 4, b: 5 }, [
     { type: 'text', text: '{\n  "result": 9\n}' },
+  ]);
+  await checkText('join', { strs: ['a', 'b', 'c'], sep: '-' }, [
+    { type: 'text', text: 'a-b-c' },
   ]);
   await checkText('upper', { s: 'hello' }, [{ type: 'text', text: 'HELLO' }]);
 

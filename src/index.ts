@@ -109,9 +109,18 @@ export const compile = ({
       const args: Record<string, unknown> = {};
       const props = inputSchema.properties;
 
-      for (const key of Object.keys(props ?? {})) args[key] = params[key];
+      const arity = tools[name].length; // to get correct arity in TS
+      const keys = Object.keys(props ?? {});
+      const values: any[] = [];
+      for (let i = 0; i < keys.length; i++) {
+        const key = keys[i]!;
+        const isRest = arity === i;
+        const value = params[key];
+        if (isRest) values.push(...(value as any[]));
+        else values.push(value);
+      }
 
-      result = await tools[name](...Object.values(args).flat());
+      result = await tools[name](...values);
     }
     return wrappedResults.has(name) ? { result } : result;
   };

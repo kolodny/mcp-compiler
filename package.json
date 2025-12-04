@@ -1,6 +1,6 @@
 {
   "name": "mcp-compiler",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Transform plain TypeScript functions into an MCP server.",
   "main": "dist/index.js",
   "scripts": {
